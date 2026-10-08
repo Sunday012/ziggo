@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import type { AgentActivity, AgentStreamEvent, ChatMessage, Citation } from "@/lib/agent/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type ConversationSummary = { id: string; title: string; updated_at: string };
 type KnowledgeDocument = {
@@ -70,6 +71,7 @@ export function ChatWorkspace({
 }) {
   const { organization, isLoaded } = useOrganization();
   const organizationName = organization?.name ?? "your team";
+  const organizationLogo = organization?.imageUrl;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>(initialConversations);
@@ -234,8 +236,8 @@ export function ChatWorkspace({
         <header className="flex h-[74px] shrink-0 items-center justify-between border-b border-black/7 bg-white/65 px-4 backdrop-blur-xl sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/select-org" className="grid size-10 place-items-center rounded-xl border border-black/8 bg-white text-[#10251d] lg:hidden" aria-label="Choose workspace"><Menu className="size-4" /></Link>
-            <Image src="/ziggo-mark.png" alt="" width={40} height={40} className="size-10 rounded-xl" priority />
-            <div className="min-w-0"><h1 className="truncate text-sm font-bold tracking-[-0.01em]">{isLoaded ? `${organizationName} agent` : "Loading support agent…"}</h1><p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-[#6f7e78]"><span className="size-1.5 rounded-full bg-emerald-500" /> Tools online · approval controlled</p></div>
+            <OrganizationAvatar name={organizationName} imageUrl={organizationLogo} size="header" />
+            <div className="min-w-0"><h1 className="truncate text-sm font-bold tracking-[-0.01em]">{isLoaded ? `${organizationName} support` : "Loading support agent…"}</h1><p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-[#6f7e78]"><span className="size-1.5 rounded-full bg-emerald-500" /> Tools online · approval controlled</p></div>
           </div>
           <div className="flex items-center gap-1">
             <button onClick={() => setPanel(panel === "knowledge" ? null : "knowledge")} type="button" className={`grid size-9 place-items-center rounded-lg transition sm:flex sm:w-auto sm:gap-2 sm:px-3 ${panel === "knowledge" ? "bg-[#dff6e8] text-[#196b4d]" : "text-[#66756f] hover:bg-black/5"}`} aria-label="Knowledge base"><Database className="size-3.5" /><span className="hidden text-xs font-semibold sm:inline">Knowledge</span></button>
@@ -258,7 +260,7 @@ export function ChatWorkspace({
               <div className="space-y-7 pb-6">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {message.role === "assistant" && <Image src="/ziggo-mark.png" alt="Ziggo" width={32} height={32} className="mt-1 size-8 shrink-0 rounded-lg" />}
+                    {message.role === "assistant" && <OrganizationAvatar name={organizationName} imageUrl={organizationLogo} size="message" />}
                     <div className={`max-w-[82%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[72%] ${message.role === "user" ? "rounded-tr-md bg-[#196b4d] text-white" : "rounded-tl-md border border-black/6 bg-white text-[#253a32]"}`}>
                       {message.content || <span className="flex h-6 items-center gap-1.5" aria-label="Agent is working">{[0, 1, 2].map((dot) => <span key={dot} className="size-1.5 rounded-full bg-[#196b4d]" style={{ animation: `pulse-soft 1s ${dot * 150}ms infinite` }} />)}</span>}
                     </div>
@@ -286,6 +288,16 @@ export function ChatWorkspace({
 
       {panel && <AgentPanel panel={panel} onClose={() => setPanel(null)} conversations={conversations} activeConversationId={conversationId} onConversation={(id) => void loadConversation(id)} activities={activities} approvals={approvals} onApproval={(id, decision) => void decideApproval(id, decision)} initialKnowledgeDocuments={initialKnowledgeDocuments} knowledgeConfigured={knowledgeConfigured} />}
     </section>
+  );
+}
+
+function OrganizationAvatar({ name, imageUrl, size }: { name: string; imageUrl?: string; size: "header" | "message" }) {
+  const initials = name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <Avatar className={`shrink-0 rounded-xl border border-black/7 bg-white ${size === "header" ? "size-10" : "mt-1 size-8"}`}>
+      <AvatarImage src={imageUrl} alt={`${name} logo`} className="object-cover" />
+      <AvatarFallback className="rounded-xl bg-[#dff6e8] text-[10px] font-black text-[#196b4d]">{initials}</AvatarFallback>
+    </Avatar>
   );
 }
 
