@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useOrganization, useOrganizationList, UserButton } from "@clerk/nextjs";
 import { ChevronRight, MessageCircleMore, Plus, Sparkles } from "lucide-react";
@@ -23,7 +24,7 @@ export function SideNav() {
     <aside className="flex h-full w-full flex-col bg-[#0b1f18] p-4 text-white lg:w-[310px] lg:shrink-0 lg:p-5">
       <div className="flex items-center justify-between px-1 py-1">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#dbf97e] text-sm font-black text-[#10251d]">Z</span>
+          <Image src="/ziggo-mark.png" alt="" width={36} height={36} className="size-9 rounded-xl" priority />
           <span className="text-xl font-bold tracking-[-0.04em]">ziggo</span>
         </Link>
         <UserButton />

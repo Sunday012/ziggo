@@ -23,7 +23,9 @@ export const metadata: Metadata = {
     title: "Ziggo — AI support that feels human",
     description: "Resolve more conversations while keeping every response personal.",
     type: "website",
+    images: [{ url: "/ziggo-mark.png", width: 1254, height: 1254, alt: "Ziggo" }],
   },
+  icons: { icon: "/ziggo-mark.png", apple: "/ziggo-mark.png" },
 };
 
 export const viewport: Viewport = {

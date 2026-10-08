@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { OrganizationList, UserButton } from "@clerk/nextjs";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { isClerkConfigured } from "@/lib/auth-config";
@@ -11,7 +12,7 @@ export default function SelectOrganizationPage() {
     return (
       <main className="noise grid min-h-screen place-items-center bg-[#edf7f0] px-5">
         <div className="max-w-lg rounded-[2rem] border border-black/8 bg-white p-8 text-center shadow-[0_28px_80px_rgba(16,37,29,0.12)] sm:p-12">
-          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#10251d] text-lg font-black text-[#dbf97e]">Z</span>
+          <Image src="/ziggo-mark.png" alt="Ziggo" width={48} height={48} className="mx-auto size-12 rounded-2xl" priority />
           <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em]">Authentication needs configuring</h1>
           <p className="mt-4 text-sm leading-6 text-[#66756f]">Add the Clerk publishable and secret keys from <code className="rounded bg-black/5 px-1.5 py-0.5">.env.example</code>, then restart Ziggo to create or choose a workspace.</p>
           <Link href="/" className="mt-7 inline-flex h-11 items-center rounded-xl bg-[#10251d] px-5 text-sm font-semibold text-white">Return home</Link>
@@ -26,7 +27,7 @@ export default function SelectOrganizationPage() {
       <div className="absolute -right-48 bottom-0 size-[540px] rounded-full bg-[#dbf97e]/35 blur-3xl" />
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Back to Ziggo home">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#10251d] text-sm font-black text-[#dbf97e]">Z</span>
+          <Image src="/ziggo-mark.png" alt="" width={36} height={36} className="size-9 rounded-xl" priority />
           <span className="text-xl font-bold tracking-[-0.04em]">ziggo</span>
         </Link>
         <UserButton />

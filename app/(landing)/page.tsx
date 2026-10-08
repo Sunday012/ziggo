@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -94,7 +95,7 @@ export default function Home() {
             <div className="relative rotate-[1.5deg] overflow-hidden rounded-[2rem] border border-white/12 bg-[#f8f7f1] p-3 text-[#10251d] shadow-[0_35px_100px_rgba(0,0,0,0.42)] sm:p-4">
               <div className="flex h-[580px] overflow-hidden rounded-[1.35rem] bg-white sm:h-[610px]">
                 <aside className="hidden w-[34%] flex-col bg-[#10251d] p-5 text-white sm:flex">
-                  <div className="mb-10 flex items-center gap-2.5"><span className="grid size-7 place-items-center rounded-lg bg-[#dbf97e] text-xs font-black text-[#10251d]">Z</span><b>ziggo</b></div>
+                  <div className="mb-10 flex items-center gap-2.5"><Image src="/ziggo-mark.png" alt="" width={28} height={28} className="size-7 rounded-lg" /><b>ziggo</b></div>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/35">Inbox</span>
                   <div className="mt-4 rounded-xl bg-white/10 p-3">
                     <div className="flex items-center gap-2"><span className="size-8 rounded-lg bg-[#b9f4d4]" /><div><div className="text-xs font-semibold">Northstar</div><div className="mt-1 text-[9px] text-white/45">Active now</div></div></div>

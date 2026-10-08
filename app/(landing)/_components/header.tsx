@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,7 @@ export function Header() {
     <header className="absolute inset-x-0 top-0 z-50">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
         <Link href="/" className="group flex items-center gap-2.5" aria-label="Ziggo home">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#dbf97e] text-base font-black text-[#0f3b2d] transition-transform group-hover:-rotate-6">
-            Z
-          </span>
+          <Image src="/ziggo-mark.png" alt="" width={36} height={36} className="size-9 rounded-xl transition-transform group-hover:-rotate-6" priority />
           <span className="text-xl font-bold tracking-[-0.04em] text-white">ziggo</span>
         </Link>
 

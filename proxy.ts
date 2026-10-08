@@ -2,7 +2,7 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isClerkConfigured } from "@/lib/auth-config";
 
-const protectedPrefixes = ["/assistant", "/select-org", "/api/chat"];
+const protectedPrefixes = ["/assistant", "/select-org", "/api/"];
 
 const authenticatedProxy = clerkMiddleware(async (auth, request) => {
   if (protectedPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix))) {
