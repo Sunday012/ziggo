@@ -1,22 +1,20 @@
 import "server-only";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { ChatMessage } from "./types";
 
-let client: SupabaseClient | null | undefined;
+type Database = NeonQueryFunction<false, false>;
+
+let database: Database | null | undefined;
 
 export function getAgentDatabase() {
-  if (client !== undefined) return client;
-  const url = process.env.SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-  client = url && secretKey
-    ? createClient(url, secretKey, { auth: { persistSession: false, autoRefreshToken: false } })
-    : null;
-  return client;
+  if (database !== undefined) return database;
+  database = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
+  return database;
 }
 
 export function isPersistenceConfigured() {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
+  return Boolean(process.env.DATABASE_URL);
 }
 
 export async function ensureConversation(input: {
@@ -25,33 +23,33 @@ export async function ensureConversation(input: {
   userId: string;
   title: string;
 }) {
-  const database = getAgentDatabase();
-  if (!database) return;
-  const { data: existing, error: readError } = await database
-    .from("ziggo_conversations")
-    .select("organization_id")
-    .eq("id", input.id)
-    .maybeSingle();
-  if (readError) throw new Error(`Could not verify conversation: ${readError.message}`);
-  if (existing && existing.organization_id !== input.orgId) throw new Error("This conversation belongs to a different workspace.");
+  const sql = getAgentDatabase();
+  if (!sql) return;
 
-  if (existing) {
-    const { error } = await database
-      .from("ziggo_conversations")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", input.id)
-      .eq("organization_id", input.orgId);
-    if (error) throw new Error(`Could not update conversation: ${error.message}`);
+  const existing = await sql`
+    select organization_id
+    from ziggo_conversations
+    where id = ${input.id}::uuid
+    limit 1
+  ` as Array<{ organization_id: string }>;
+
+  if (existing[0] && existing[0].organization_id !== input.orgId) {
+    throw new Error("This conversation belongs to a different workspace.");
+  }
+
+  if (existing[0]) {
+    await sql`
+      update ziggo_conversations
+      set updated_at = now()
+      where id = ${input.id}::uuid and organization_id = ${input.orgId}
+    `;
     return;
   }
 
-  const { error } = await database.from("ziggo_conversations").insert({
-    id: input.id,
-    organization_id: input.orgId,
-    created_by: input.userId,
-    title: input.title.slice(0, 90),
-  });
-  if (error) throw new Error(`Could not persist conversation: ${error.message}`);
+  await sql`
+    insert into ziggo_conversations (id, organization_id, created_by, title)
+    values (${input.id}::uuid, ${input.orgId}, ${input.userId}, ${input.title.slice(0, 90)})
+  `;
 }
 
 export async function saveMessage(input: {
@@ -61,16 +59,18 @@ export async function saveMessage(input: {
   content: string;
   citations?: unknown;
 }) {
-  const database = getAgentDatabase();
-  if (!database) return;
-  const { error } = await database.from("ziggo_messages").insert({
-    conversation_id: input.conversationId,
-    organization_id: input.orgId,
-    role: input.role,
-    content: input.content,
-    citations: input.citations ?? [],
-  });
-  if (error) throw new Error(`Could not persist message: ${error.message}`);
+  const sql = getAgentDatabase();
+  if (!sql) return;
+  await sql`
+    insert into ziggo_messages (conversation_id, organization_id, role, content, citations)
+    values (
+      ${input.conversationId}::uuid,
+      ${input.orgId},
+      ${input.role},
+      ${input.content},
+      ${JSON.stringify(input.citations ?? [])}::jsonb
+    )
+  `;
 }
 
 export async function logAgentEvent(input: {
@@ -84,49 +84,51 @@ export async function logAgentEvent(input: {
   input?: unknown;
   output?: unknown;
 }) {
-  const database = getAgentDatabase();
+  const sql = getAgentDatabase();
   const id = input.id ?? crypto.randomUUID();
-  if (!database) return id;
-  const { error } = await database.from("ziggo_agent_events").insert({
-    id,
-    conversation_id: input.conversationId,
-    organization_id: input.orgId,
-    user_id: input.userId,
-    event_type: input.eventType,
-    tool_name: input.toolName ?? null,
-    status: input.status,
-    input: input.input ?? {},
-    output: input.output ?? {},
-  });
-  if (error) throw new Error(`Could not persist agent event: ${error.message}`);
+  if (!sql) return id;
+  await sql`
+    insert into ziggo_agent_events (
+      id, conversation_id, organization_id, user_id, event_type, tool_name, status, input, output
+    ) values (
+      ${id}::uuid,
+      ${input.conversationId}::uuid,
+      ${input.orgId},
+      ${input.userId},
+      ${input.eventType},
+      ${input.toolName ?? null},
+      ${input.status},
+      ${JSON.stringify(input.input ?? {})}::jsonb,
+      ${JSON.stringify(input.output ?? {})}::jsonb
+    )
+  `;
   return id;
 }
 
 export async function listConversations(orgId: string) {
-  const database = getAgentDatabase();
-  if (!database) return [];
-  const { data, error } = await database
-    .from("ziggo_conversations")
-    .select("id,title,updated_at")
-    .eq("organization_id", orgId)
-    .order("updated_at", { ascending: false })
-    .limit(20);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const sql = getAgentDatabase();
+  if (!sql) return [];
+  const rows = await sql`
+    select id, title, updated_at
+    from ziggo_conversations
+    where organization_id = ${orgId}
+    order by updated_at desc
+    limit 20
+  `;
+  return rows as Array<{ id: string; title: string; updated_at: string }>;
 }
 
 export async function loadConversation(orgId: string, conversationId: string) {
-  const database = getAgentDatabase();
-  if (!database) return [];
-  const { data, error } = await database
-    .from("ziggo_messages")
-    .select("id,role,content,created_at")
-    .eq("organization_id", orgId)
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(100);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((message): ChatMessage => ({
+  const sql = getAgentDatabase();
+  if (!sql) return [];
+  const messages = await sql`
+    select id, role, content, created_at
+    from ziggo_messages
+    where organization_id = ${orgId} and conversation_id = ${conversationId}::uuid
+    order by created_at asc
+    limit 100
+  ` as Array<{ id: number; role: "assistant" | "user"; content: string; created_at: string }>;
+  return messages.map((message): ChatMessage => ({
     id: String(message.id),
     role: message.role,
     content: message.content,
@@ -135,30 +137,44 @@ export async function loadConversation(orgId: string, conversationId: string) {
 }
 
 export async function listAgentEvents(orgId: string, conversationId: string) {
-  const database = getAgentDatabase();
-  if (!database) return [];
-  const { data, error } = await database
-    .from("ziggo_agent_events")
-    .select("id,event_type,tool_name,status,input,output,created_at")
-    .eq("organization_id", orgId)
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(100);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const sql = getAgentDatabase();
+  if (!sql) return [];
+  const rows = await sql`
+    select id, event_type, tool_name, status, input, output, created_at
+    from ziggo_agent_events
+    where organization_id = ${orgId} and conversation_id = ${conversationId}::uuid
+    order by created_at asc
+    limit 100
+  `;
+  return rows as Array<{
+    id: string;
+    event_type: string;
+    tool_name: string | null;
+    status: string;
+    input: { reason?: string };
+    output: { resultCount?: number };
+    created_at: string;
+  }>;
 }
 
 export async function listKnowledgeDocuments(orgId: string) {
-  const database = getAgentDatabase();
-  if (!database) return [];
-  const { data, error } = await database
-    .from("ziggo_knowledge_documents")
-    .select("id,title,source_name,status,chunk_count,created_at")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const sql = getAgentDatabase();
+  if (!sql) return [];
+  const rows = await sql`
+    select id, title, source_name, status, chunk_count, created_at
+    from ziggo_knowledge_documents
+    where organization_id = ${orgId}
+    order by created_at desc
+    limit 50
+  `;
+  return rows as Array<{
+    id: string;
+    title: string;
+    source_name: string;
+    status: string;
+    chunk_count: number;
+    created_at: string;
+  }>;
 }
 
 export async function saveKnowledgeDocument(input: {
@@ -168,17 +184,20 @@ export async function saveKnowledgeDocument(input: {
   sourceName: string;
   chunkCount: number;
 }) {
-  const database = getAgentDatabase();
-  if (!database) return;
-  const { error } = await database.from("ziggo_knowledge_documents").insert({
-    id: input.id,
-    organization_id: input.orgId,
-    title: input.title,
-    source_name: input.sourceName,
-    status: "ready",
-    chunk_count: input.chunkCount,
-  });
-  if (error) throw new Error(error.message);
+  const sql = getAgentDatabase();
+  if (!sql) return;
+  await sql`
+    insert into ziggo_knowledge_documents (
+      id, organization_id, title, source_name, status, chunk_count
+    ) values (
+      ${input.id}::uuid,
+      ${input.orgId},
+      ${input.title},
+      ${input.sourceName},
+      'ready',
+      ${input.chunkCount}
+    )
+  `;
 }
 
 export async function resolveApproval(input: {
@@ -187,35 +206,43 @@ export async function resolveApproval(input: {
   userId: string;
   decision: "approved" | "denied";
 }) {
-  const database = getAgentDatabase();
-  if (!database) throw new Error("Supabase is required for approvals.");
-
-  const { data: event, error: readError } = await database
-    .from("ziggo_agent_events")
-    .select("id,conversation_id,input,status")
-    .eq("id", input.eventId)
-    .eq("organization_id", input.orgId)
-    .eq("status", "pending")
-    .maybeSingle();
-  if (readError || !event) throw new Error("This approval is no longer available.");
-
-  const { error: updateError } = await database
-    .from("ziggo_agent_events")
-    .update({ status: input.decision, reviewed_by: input.userId, reviewed_at: new Date().toISOString() })
-    .eq("id", input.eventId)
-    .eq("organization_id", input.orgId);
-  if (updateError) throw new Error(updateError.message);
+  const sql = getAgentDatabase();
+  if (!sql) throw new Error("Neon is required for approvals.");
 
   if (input.decision === "approved") {
-    const eventInput = event.input as { reason?: string; summary?: string };
-    const { error: handoffError } = await database.from("ziggo_handoffs").insert({
-      organization_id: input.orgId,
-      conversation_id: event.conversation_id,
-      created_by: input.userId,
-      reason: eventInput.reason ?? "Customer requested help",
-      summary: eventInput.summary ?? "Review the conversation and follow up with the customer.",
-      status: "open",
-    });
-    if (handoffError) throw new Error(handoffError.message);
+    const handoffs = await sql`
+      with approved_event as (
+        update ziggo_agent_events
+        set status = 'approved', reviewed_by = ${input.userId}, reviewed_at = now()
+        where id = ${input.eventId}::uuid
+          and organization_id = ${input.orgId}
+          and status = 'pending'
+        returning conversation_id, input
+      )
+      insert into ziggo_handoffs (
+        organization_id, conversation_id, created_by, reason, summary, status
+      )
+      select
+        ${input.orgId},
+        conversation_id,
+        ${input.userId},
+        coalesce(input->>'reason', 'Customer requested help'),
+        coalesce(input->>'summary', 'Review the conversation and follow up with the customer.'),
+        'open'
+      from approved_event
+      returning id
+    `;
+    if (handoffs.length === 0) throw new Error("This approval is no longer available.");
+    return;
   }
+
+  const denied = await sql`
+    update ziggo_agent_events
+    set status = 'denied', reviewed_by = ${input.userId}, reviewed_at = now()
+    where id = ${input.eventId}::uuid
+      and organization_id = ${input.orgId}
+      and status = 'pending'
+    returning id
+  `;
+  if (denied.length === 0) throw new Error("This approval is no longer available.");
 }
