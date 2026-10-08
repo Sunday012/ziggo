@@ -69,9 +69,6 @@ export default function Home() {
         <div className="pointer-events-none absolute -right-40 top-12 size-[620px] rounded-full bg-[#8ed7b2]/15 blur-[130px]" />
         <div className="mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-[0.88fr_1.12fr] lg:gap-10">
           <div className="relative z-10 fade-up">
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[#b9f4d4]">
-              <Sparkles className="size-3.5" /> AI support, made personal
-            </div>
             <h1 className="balance max-w-3xl text-[clamp(3.4rem,7.2vw,7rem)] font-semibold leading-[0.88] tracking-[-0.07em]">
               Support that <span className="font-serif italic text-[#dbf97e]">shows up.</span>
             </h1>
