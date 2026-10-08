@@ -54,7 +54,7 @@ export function chunkDocument(content: string) {
     cursor = Math.max(end - overlap, cursor + 1);
   }
 
-  return chunks.filter(Boolean).slice(0, 80);
+  return chunks.filter(Boolean).slice(0, 300);
 }
 
 export async function indexKnowledge(input: {
@@ -66,17 +66,36 @@ export async function indexKnowledge(input: {
 }) {
   const index = getIndex();
   if (!index) throw new Error("Pinecone is not configured.");
-  await index.upsertRecords({
-    namespace: namespaceFor(input.orgId),
-    records: input.chunks.map((text, chunkIndex) => ({
-      _id: `${input.documentId}#${chunkIndex}`,
-      text,
-      title: input.title,
-      source: input.source,
-      document_id: input.documentId,
-      chunk_index: chunkIndex,
-    })),
+  const batches = Array.from({ length: Math.ceil(input.chunks.length / 50) }, (_, batchIndex) => {
+    const offset = batchIndex * 50;
+    return input.chunks.slice(offset, offset + 50).map((text, relativeIndex) => {
+      const chunkIndex = offset + relativeIndex;
+      return {
+        _id: `${input.documentId}#${chunkIndex}`,
+        text,
+        title: input.title,
+        source: input.source,
+        document_id: input.documentId,
+        chunk_index: chunkIndex,
+      };
+    });
   });
+  const results = await Promise.allSettled(batches.map((records) => index.upsertRecords({
+    namespace: namespaceFor(input.orgId),
+    records,
+  })));
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
+}
+
+export async function deleteKnowledge(orgId: string, documentId: string, chunkCount: number) {
+  const index = getIndex();
+  if (!index) throw new Error("Pinecone is not configured.");
+  const ids = Array.from({ length: chunkCount }, (_, index) => `${documentId}#${index}`);
+  const batches = Array.from({ length: Math.ceil(ids.length / 500) }, (_, batchIndex) => ids.slice(batchIndex * 500, (batchIndex + 1) * 500));
+  const results = await Promise.allSettled(batches.map((batch) => index.deleteMany({ namespace: namespaceFor(orgId), ids: batch })));
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
 }
 
 export async function searchKnowledge(orgId: string, query: string): Promise<Citation[]> {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ChatWorkspace } from "../../_components/chat-workspace";
-import { listConversations, listKnowledgeDocuments } from "@/lib/agent/database";
+import { isPersistenceConfigured, listConversations, listKnowledgeDocuments } from "@/lib/agent/database";
 import { isKnowledgeConfigured } from "@/lib/agent/knowledge";
 
 export const metadata: Metadata = { title: "Support workspace" };
@@ -22,7 +22,7 @@ export default async function AssistantPage() {
     <ChatWorkspace
       initialConversations={conversations}
       initialKnowledgeDocuments={knowledgeDocuments}
-      knowledgeConfigured={isKnowledgeConfigured()}
+      knowledgeConfigured={isKnowledgeConfigured() && isPersistenceConfigured()}
     />
   );
 }

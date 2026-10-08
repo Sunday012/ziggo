@@ -16,11 +16,17 @@ Ziggo is an agentic customer-support workspace. Each Clerk organization gets an 
 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` to `.env.local` and add the server-side credentials.
-3. Create a Neon project, copy its pooled connection string into `DATABASE_URL`, and run `database/migrations/001_create_agent_runtime.sql` in Neon's SQL Editor.
+3. Create a Neon project, copy its pooled connection string into `DATABASE_URL`, then run `database/migrations/001_create_agent_runtime.sql` and `database/migrations/002_add_knowledge_sources.sql` in order in Neon's SQL Editor.
 4. In Pinecone, create an integrated-embedding index whose source text field is named `text`, then set its name in `PINECONE_INDEX_NAME`.
 5. Start the application with `npm run dev`.
 
 The Clerk application must have Organizations enabled. The Pinecone index must support `upsertRecords` and `searchRecords`; Ziggo uses a separate namespace for every Clerk organization. Add the same environment variables to Vercel before deploying.
+
+## Knowledge sources
+
+Workspace members can paste reviewed text or upload PDF, DOCX, TXT, Markdown, CSV, and JSON documents from the Knowledge panel. Uploads are limited to 4 MB and 400,000 extracted characters. Ziggo records the source and indexing state in Neon, deduplicates matching content, batches embeddings into Pinecone, and removes both the metadata and vectors when a source is deleted.
+
+Migration `002_add_knowledge_sources.sql` also creates the connector and review-queue foundation for Google Drive synchronization and conversation-derived knowledge. Provider credentials must be encrypted before they are written to `encrypted_credentials`; the application does not store connector credentials yet.
 
 ## How the agent works
 

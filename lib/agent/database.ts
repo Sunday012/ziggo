@@ -5,6 +5,20 @@ import type { ChatMessage } from "./types";
 
 type Database = NeonQueryFunction<false, false>;
 
+export type KnowledgeDocumentRow = {
+  id: string;
+  title: string;
+  source_name: string;
+  source_type: string;
+  mime_type: string | null;
+  byte_size: number | null;
+  status: "processing" | "ready" | "failed";
+  chunk_count: number;
+  error_message: string | null;
+  created_at: string;
+  indexed_at: string | null;
+};
+
 let database: Database | null | undefined;
 
 export function getAgentDatabase() {
@@ -161,42 +175,105 @@ export async function listKnowledgeDocuments(orgId: string) {
   const sql = getAgentDatabase();
   if (!sql) return [];
   const rows = await sql`
-    select id, title, source_name, status, chunk_count, created_at
+    select id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at
     from ziggo_knowledge_documents
     where organization_id = ${orgId}
     order by created_at desc
     limit 50
   `;
-  return rows as Array<{
-    id: string;
-    title: string;
-    source_name: string;
-    status: string;
-    chunk_count: number;
-    created_at: string;
-  }>;
+  return rows as KnowledgeDocumentRow[];
 }
 
-export async function saveKnowledgeDocument(input: {
+export async function findKnowledgeDocumentByChecksum(orgId: string, checksum: string) {
+  const sql = getAgentDatabase();
+  if (!sql) return null;
+  const rows = await sql`
+    select id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at
+    from ziggo_knowledge_documents
+    where organization_id = ${orgId} and checksum = ${checksum} and status <> 'failed'
+    limit 1
+  ` as KnowledgeDocumentRow[];
+  return rows[0] ?? null;
+}
+
+export async function createKnowledgeDocument(input: {
   id: string;
   orgId: string;
   title: string;
   sourceName: string;
-  chunkCount: number;
+  sourceType: "paste" | "upload" | "google_drive" | "conversation" | "whatsapp";
+  mimeType?: string;
+  byteSize?: number;
+  checksum: string;
 }) {
   const sql = getAgentDatabase();
-  if (!sql) return;
-  await sql`
+  if (!sql) throw new Error("Neon is required for the knowledge library.");
+  const rows = await sql`
     insert into ziggo_knowledge_documents (
-      id, organization_id, title, source_name, status, chunk_count
+      id, organization_id, title, source_name, source_type, mime_type,
+      byte_size, checksum, status, chunk_count
     ) values (
       ${input.id}::uuid,
       ${input.orgId},
       ${input.title},
       ${input.sourceName},
-      'ready',
-      ${input.chunkCount}
+      ${input.sourceType},
+      ${input.mimeType ?? null},
+      ${input.byteSize ?? null},
+      ${input.checksum},
+      'processing',
+      0
     )
+    returning id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at
+  `;
+  return rows[0] as KnowledgeDocumentRow;
+}
+
+export async function markKnowledgeDocumentReady(input: { id: string; orgId: string; chunkCount: number }) {
+  const sql = getAgentDatabase();
+  if (!sql) throw new Error("Neon is required for the knowledge library.");
+  const rows = await sql`
+    update ziggo_knowledge_documents
+    set status = 'ready', chunk_count = ${input.chunkCount}, indexed_at = now(), updated_at = now(), error_message = null
+    where id = ${input.id}::uuid and organization_id = ${input.orgId}
+    returning id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at
+  `;
+  return rows[0] as KnowledgeDocumentRow | undefined;
+}
+
+export async function markKnowledgeDocumentFailed(input: { id: string; orgId: string; error: string }) {
+  const sql = getAgentDatabase();
+  if (!sql) return;
+  await sql`
+    update ziggo_knowledge_documents
+    set status = 'failed', error_message = ${input.error.slice(0, 500)}, updated_at = now()
+    where id = ${input.id}::uuid and organization_id = ${input.orgId}
+  `;
+}
+
+export async function getKnowledgeDocument(orgId: string, id: string) {
+  const sql = getAgentDatabase();
+  if (!sql) return null;
+  const rows = await sql`
+    select id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at
+    from ziggo_knowledge_documents
+    where id = ${id}::uuid and organization_id = ${orgId}
+    limit 1
+  ` as KnowledgeDocumentRow[];
+  return rows[0] ?? null;
+}
+
+export async function deleteKnowledgeDocument(orgId: string, id: string) {
+  const sql = getAgentDatabase();
+  if (!sql) throw new Error("Neon is required for the knowledge library.");
+  await sql`
+    delete from ziggo_knowledge_documents
+    where id = ${id}::uuid and organization_id = ${orgId}
   `;
 }
 

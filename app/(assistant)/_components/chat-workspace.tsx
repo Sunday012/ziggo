@@ -18,13 +18,27 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  Trash2,
+  Upload,
   UserRound,
   X,
 } from "lucide-react";
 import type { AgentActivity, AgentStreamEvent, ChatMessage, Citation } from "@/lib/agent/types";
 
 type ConversationSummary = { id: string; title: string; updated_at: string };
-type KnowledgeDocument = { id: string; title: string; source_name: string; status: string; chunk_count: number; created_at?: string };
+type KnowledgeDocument = {
+  id: string;
+  title: string;
+  source_name: string;
+  source_type: string;
+  mime_type?: string | null;
+  byte_size?: number | null;
+  status: "processing" | "ready" | "failed";
+  chunk_count: number;
+  error_message?: string | null;
+  created_at?: string;
+  indexed_at?: string | null;
+};
 type Approval = { id: string; title: string; detail: string; status?: "approved" | "denied" };
 type StoredAgentEvent = { id: string; event_type: string; tool_name?: string | null; status: string; input?: { reason?: string }; output?: { resultCount?: number }; created_at?: string };
 type Panel = "activity" | "knowledge" | null;
@@ -307,16 +321,27 @@ function ActivityPanel(props: Pick<Parameters<typeof AgentPanel>[0], "activities
 
 function KnowledgePanel({ initialDocuments, configured }: { initialDocuments: KnowledgeDocument[]; configured: boolean }) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(initialDocuments);
+  const [mode, setMode] = useState<"upload" | "paste">("upload");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [sourceName, setSourceName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function addDocument(document: KnowledgeDocument, duplicate?: boolean) {
+    setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)]);
+    setNotice(duplicate ? "That content was already indexed, so Ziggo kept the existing source." : "Source indexed and ready for the agent.");
+  }
 
   async function addKnowledge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
     setError(null);
+    setNotice(null);
     try {
       const response = await fetch("/api/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, sourceName, content }) });
       if (!response.ok) {
@@ -324,10 +349,9 @@ function KnowledgePanel({ initialDocuments, configured }: { initialDocuments: Kn
         setError(failure?.error ?? "Knowledge could not be indexed.");
         return;
       }
-      const data = await response.json() as { document?: KnowledgeDocument };
+      const data = await response.json() as { document?: KnowledgeDocument; duplicate?: boolean };
       if (!data.document) { setError("Knowledge could not be indexed."); return; }
-      const document = data.document;
-      setDocuments((current) => [document, ...current]);
+      addDocument(data.document, data.duplicate);
       setTitle(""); setSourceName(""); setContent("");
     } catch {
       setError("Knowledge could not be indexed. Check your connection and try again.");
@@ -336,9 +360,70 @@ function KnowledgePanel({ initialDocuments, configured }: { initialDocuments: Kn
     }
   }
 
+  async function uploadKnowledge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!file) return;
+    setIsSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      if (title.trim()) form.set("title", title.trim());
+      const response = await fetch("/api/knowledge/upload", { method: "POST", body: form });
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null) as { error?: string } | null;
+        setError(failure?.error ?? "The document could not be indexed.");
+        return;
+      }
+      const data = await response.json() as { document?: KnowledgeDocument; duplicate?: boolean };
+      if (!data.document) { setError("The document could not be indexed."); return; }
+      addDocument(data.document, data.duplicate);
+      setTitle("");
+      setFile(null);
+      const input = document.getElementById("knowledge-file") as HTMLInputElement | null;
+      if (input) input.value = "";
+    } catch {
+      setError("The document could not be uploaded. Check your connection and try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function removeKnowledge(id: string) {
+    if (confirmingId !== id) {
+      setConfirmingId(id);
+      return;
+    }
+    setRemovingId(id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/knowledge?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { error?: string } | null;
+        setError(data?.error ?? "The source could not be removed.");
+        return;
+      }
+      setDocuments((current) => current.filter((item) => item.id !== id));
+      setNotice("Source removed from the agent's knowledge.");
+    } catch {
+      setError("The source could not be removed. Check your connection and try again.");
+    } finally {
+      setRemovingId(null);
+      setConfirmingId(null);
+    }
+  }
+
   return <div className="min-h-0 flex-1 overflow-y-auto p-4">
-    {!configured && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Add Pinecone credentials and an integrated-embedding index to enable retrieval.</div>}
-    <form onSubmit={addKnowledge} className="rounded-2xl border border-black/7 bg-white p-4"><div className="flex items-center gap-2 text-xs font-bold"><Plus className="size-3.5 text-[#196b4d]" /> Add approved knowledge</div><label htmlFor="knowledge-title" className="sr-only">Document title</label><input id="knowledge-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Document title" maxLength={120} className="mt-3 h-10 w-full rounded-lg border border-black/10 px-3 text-xs outline-none focus:border-[#196b4d]/50" /><label htmlFor="knowledge-source" className="sr-only">Source name or URL</label><input id="knowledge-source" value={sourceName} onChange={(event) => setSourceName(event.target.value)} placeholder="Source name or URL (optional)" maxLength={180} className="mt-2 h-10 w-full rounded-lg border border-black/10 px-3 text-xs outline-none focus:border-[#196b4d]/50" /><label htmlFor="knowledge-content" className="sr-only">Knowledge content</label><textarea id="knowledge-content" value={content} onChange={(event) => setContent(event.target.value)} placeholder="Paste policies, product details, troubleshooting guides, or FAQs…" rows={8} maxLength={100_000} className="mt-2 w-full resize-y rounded-lg border border-black/10 p-3 text-xs leading-5 outline-none focus:border-[#196b4d]/50" />{error && <p className="mt-2 text-xs text-red-600">{error}</p>}<button type="submit" disabled={!configured || isSaving || title.trim().length === 0 || content.trim().length < 40} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#10251d] text-xs font-bold text-white disabled:opacity-40"><Database className="size-3.5" /> {isSaving ? "Chunking and indexing…" : "Index knowledge"}</button></form>
-    <div className="mt-6 flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#75837d]"><Search className="size-3" /> Indexed sources</div><div className="mt-3 space-y-2">{documents.map((document) => <div key={document.id} className="rounded-xl border border-black/7 bg-white p-3"><div className="flex items-start gap-2"><FileText className="mt-0.5 size-4 shrink-0 text-[#196b4d]" /><div className="min-w-0"><p className="truncate text-xs font-bold">{document.title}</p><p className="mt-1 truncate text-[10px] text-[#75837d]">{document.source_name} · {document.chunk_count} chunks</p></div></div></div>)}{documents.length === 0 && <p className="rounded-xl border border-dashed border-black/10 px-4 py-5 text-center text-xs text-[#8a9691]">No knowledge indexed yet.</p>}</div>
+    {!configured && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Add both Neon and Pinecone credentials, then run the latest database migrations to enable the knowledge library.</div>}
+    <div className="rounded-2xl border border-black/7 bg-white p-4">
+      <div className="flex items-center justify-between"><div><p className="text-xs font-bold">Add approved knowledge</p><p className="mt-1 text-[10px] text-[#75837d]">Only reviewed company content should become an agent source.</p></div><Database className="size-4 text-[#196b4d]" /></div>
+      <div className="mt-4 grid grid-cols-2 rounded-lg bg-[#f2f5f3] p-1 text-[11px] font-bold"><button type="button" onClick={() => { setMode("upload"); setError(null); }} className={`rounded-md py-2 transition ${mode === "upload" ? "bg-white text-[#153c2d] shadow-sm" : "text-[#75837d]"}`}>Upload file</button><button type="button" onClick={() => { setMode("paste"); setError(null); }} className={`rounded-md py-2 transition ${mode === "paste" ? "bg-white text-[#153c2d] shadow-sm" : "text-[#75837d]"}`}>Paste text</button></div>
+      {mode === "upload" ? <form onSubmit={uploadKnowledge}><label htmlFor="knowledge-file" className="mt-3 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#196b4d]/25 bg-[#f5fbf7] px-4 text-center transition hover:border-[#196b4d]/50"><Upload className="size-5 text-[#196b4d]" /><span className="mt-2 text-xs font-bold text-[#153c2d]">{file ? file.name : "Choose a document"}</span><span className="mt-1 text-[10px] text-[#75837d]">PDF, DOCX, TXT, MD, CSV, or JSON · up to 4 MB</span></label><input id="knowledge-file" type="file" accept=".pdf,.docx,.txt,.md,.csv,.json" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="sr-only" /><label htmlFor="upload-title" className="sr-only">Custom document title</label><input id="upload-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Custom title (optional)" maxLength={120} className="mt-2 h-10 w-full rounded-lg border border-black/10 px-3 text-xs outline-none focus:border-[#196b4d]/50" /><button type="submit" disabled={!configured || isSaving || !file} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#10251d] text-xs font-bold text-white disabled:opacity-40"><Upload className="size-3.5" /> {isSaving ? "Reading and indexing…" : "Upload and index"}</button></form> : <form onSubmit={addKnowledge}><label htmlFor="knowledge-title" className="sr-only">Document title</label><input id="knowledge-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Document title" maxLength={120} className="mt-3 h-10 w-full rounded-lg border border-black/10 px-3 text-xs outline-none focus:border-[#196b4d]/50" /><label htmlFor="knowledge-source" className="sr-only">Source name or URL</label><input id="knowledge-source" value={sourceName} onChange={(event) => setSourceName(event.target.value)} placeholder="Source name or URL (optional)" maxLength={180} className="mt-2 h-10 w-full rounded-lg border border-black/10 px-3 text-xs outline-none focus:border-[#196b4d]/50" /><label htmlFor="knowledge-content" className="sr-only">Knowledge content</label><textarea id="knowledge-content" value={content} onChange={(event) => setContent(event.target.value)} placeholder="Paste policies, product details, troubleshooting guides, or FAQs…" rows={7} maxLength={100_000} className="mt-2 w-full resize-y rounded-lg border border-black/10 p-3 text-xs leading-5 outline-none focus:border-[#196b4d]/50" /><button type="submit" disabled={!configured || isSaving || title.trim().length === 0 || content.trim().length < 40} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#10251d] text-xs font-bold text-white disabled:opacity-40"><Plus className="size-3.5" /> {isSaving ? "Chunking and indexing…" : "Index knowledge"}</button></form>}
+      {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{error}</p>}
+      {notice && <p role="status" className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">{notice}</p>}
+    </div>
+    <div className="mt-6 flex items-center justify-between px-1"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#75837d]"><Search className="size-3" /> Source library</div><span className="text-[10px] text-[#8a9691]">{documents.length} {documents.length === 1 ? "source" : "sources"}</span></div>
+    <div className="mt-3 space-y-2">{documents.map((item) => <div key={item.id} className="rounded-xl border border-black/7 bg-white p-3"><div className="flex items-start gap-2"><FileText className="mt-0.5 size-4 shrink-0 text-[#196b4d]" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs font-bold">{item.title}</p><span className={`rounded-full px-2 py-0.5 text-[9px] font-bold capitalize ${item.status === "ready" ? "bg-emerald-50 text-emerald-700" : item.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>{item.status}</span></div><p className="mt-1 truncate text-[10px] text-[#75837d]">{item.source_name}</p><p className="mt-1 text-[10px] text-[#9aa49f]">{item.source_type === "upload" ? "File upload" : "Pasted text"} · {item.chunk_count} chunks{item.byte_size ? ` · ${(item.byte_size / 1024).toFixed(item.byte_size > 102_400 ? 0 : 1)} KB` : ""}</p>{item.error_message && <p className="mt-2 text-[10px] leading-4 text-red-600">{item.error_message}</p>}</div><button type="button" disabled={removingId === item.id} onBlur={() => confirmingId === item.id && setConfirmingId(null)} onClick={() => void removeKnowledge(item.id)} aria-label={confirmingId === item.id ? `Confirm removal of ${item.title}` : `Remove ${item.title}`} className={`shrink-0 rounded-lg p-2 transition disabled:opacity-40 ${confirmingId === item.id ? "bg-red-50 text-red-700" : "text-[#9aa49f] hover:bg-red-50 hover:text-red-700"}`}>{confirmingId === item.id ? <span className="text-[9px] font-bold">Confirm</span> : <Trash2 className="size-3.5" />}</button></div></div>)}{documents.length === 0 && <p className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center text-xs leading-5 text-[#8a9691]">No sources yet. Upload a policy, guide, or FAQ to give the agent trusted context.</p>}</div>
   </div>;
 }
