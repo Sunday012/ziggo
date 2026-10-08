@@ -6,8 +6,6 @@ import {
   Check,
   Clock3,
   MessageCircleMore,
-  Sparkles,
-  WandSparkles,
   Zap,
 } from "lucide-react";
 import { Show, SignInButton } from "@clerk/nextjs";
@@ -27,7 +25,7 @@ const features = [
     copy: "Handle repetitive questions instantly and give your team more room for the conversations that need them.",
   },
   {
-    icon: WandSparkles,
+    icon: null,
     eyebrow: "Made for your business",
     title: "One agent. Your context.",
     copy: "Every workspace gets a focused support agent that understands the company it represents.",
@@ -97,7 +95,7 @@ export default function Home() {
                   <div className="mt-4 rounded-xl bg-white/10 p-3">
                     <div className="flex items-center gap-2"><span className="size-8 rounded-lg bg-[#b9f4d4]" /><div><div className="text-xs font-semibold">Northstar</div><div className="mt-1 text-[9px] text-white/45">Active now</div></div></div>
                   </div>
-                  <div className="mt-auto rounded-2xl border border-white/8 bg-white/5 p-4"><Sparkles className="mb-3 size-4 text-[#dbf97e]" /><p className="text-[11px] leading-5 text-white/55">Your agent resolved 84% of today&apos;s questions.</p></div>
+                  <div className="mt-auto rounded-2xl border border-white/8 bg-white/5 p-4"><Image src="/ziggo-mark.png" alt="" width={16} height={16} className="mb-3 size-4 rounded" /><p className="text-[11px] leading-5 text-white/55">Your agent resolved 84% of today&apos;s questions.</p></div>
                 </aside>
                 <div className="flex min-w-0 flex-1 flex-col bg-[#fbfaf6]">
                   <div className="flex items-center justify-between border-b border-black/6 px-5 py-4">
@@ -129,7 +127,7 @@ export default function Home() {
           <div className="mt-14 grid gap-4 lg:grid-cols-3">
             {features.map(({ icon: Icon, eyebrow, title, copy }, index) => (
               <article key={title} className={`group rounded-[1.75rem] border border-black/8 p-7 transition duration-300 hover:-translate-y-1 ${index === 1 ? "bg-[#10251d] text-white" : "bg-[#fffdf8]"}`}>
-                <div className={`grid size-12 place-items-center rounded-2xl ${index === 1 ? "bg-[#dbf97e] text-[#10251d]" : "bg-[#dff6e8] text-[#196b4d]"}`}><Icon className="size-5" /></div>
+                <div className={`grid size-12 place-items-center rounded-2xl ${index === 1 ? "bg-[#dbf97e] text-[#10251d]" : "bg-[#dff6e8] text-[#196b4d]"}`}>{Icon ? <Icon className="size-5" /> : <Image src="/ziggo-mark.png" alt="" width={28} height={28} className="size-7 rounded-lg" />}</div>
                 <p className={`mt-12 text-xs font-bold uppercase tracking-[0.15em] ${index === 1 ? "text-[#b9f4d4]" : "text-[#196b4d]"}`}>{eyebrow}</p>
                 <h3 className="balance mt-3 text-3xl font-semibold leading-tight tracking-[-0.04em]">{title}</h3>
                 <p className={`pretty mt-4 text-sm leading-6 ${index === 1 ? "text-white/55" : "text-[#66756f]"}`}>{copy}</p>

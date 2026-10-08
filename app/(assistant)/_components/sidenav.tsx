@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useOrganization, useOrganizationList, UserButton } from "@clerk/nextjs";
-import { ChevronRight, MessageCircleMore, Plus, Sparkles } from "lucide-react";
+import { ChevronRight, MessageCircleMore, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function SideNav() {
@@ -61,7 +61,7 @@ export function SideNav() {
       </div>
 
       <div className="mt-auto rounded-2xl border border-white/8 bg-white/[0.045] p-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#dbf97e]"><Sparkles className="size-3.5" /> Ziggo AI</div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#dbf97e]"><Image src="/ziggo-mark.png" alt="" width={16} height={16} className="size-4 rounded" /> Ziggo AI</div>
         <p className="mt-2 text-xs leading-5 text-white/40">Clear, contextual answers for every customer conversation.</p>
         <div className="mt-4 flex items-center gap-2 border-t border-white/8 pt-3 text-[10px] font-medium text-white/35"><MessageCircleMore className="size-3.5" /> Ready to help</div>
       </div>

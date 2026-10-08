@@ -2,11 +2,11 @@
 
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useOrganization } from "@clerk/nextjs";
 import {
   Activity as ActivityIcon,
   ArrowUp,
-  Bot,
   Check,
   ChevronRight,
   CircleAlert,
@@ -18,7 +18,6 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
-  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
@@ -221,7 +220,7 @@ export function ChatWorkspace({
         <header className="flex h-[74px] shrink-0 items-center justify-between border-b border-black/7 bg-white/65 px-4 backdrop-blur-xl sm:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/select-org" className="grid size-10 place-items-center rounded-xl border border-black/8 bg-white text-[#10251d] lg:hidden" aria-label="Choose workspace"><Menu className="size-4" /></Link>
-            <div className="grid size-10 place-items-center rounded-xl bg-[#dff6e8] text-[#196b4d]"><Bot className="size-5" /></div>
+            <Image src="/ziggo-mark.png" alt="" width={40} height={40} className="size-10 rounded-xl" priority />
             <div className="min-w-0"><h1 className="truncate text-sm font-bold tracking-[-0.01em]">{isLoaded ? `${organizationName} agent` : "Loading support agent…"}</h1><p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-[#6f7e78]"><span className="size-1.5 rounded-full bg-emerald-500" /> Tools online · approval controlled</p></div>
           </div>
           <div className="flex items-center gap-1">
@@ -235,7 +234,7 @@ export function ChatWorkspace({
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-4 py-8 sm:px-8 sm:py-12">
             {messages.length === 0 ? (
               <div className="m-auto w-full max-w-2xl py-8 text-center fade-up">
-                <div className="mx-auto grid size-16 place-items-center rounded-[1.4rem] bg-[#10251d] text-[#dbf97e] shadow-lg"><Sparkles className="size-6" /></div>
+                <Image src="/ziggo-mark.png" alt="Ziggo" width={64} height={64} className="mx-auto size-16 rounded-[1.4rem] shadow-lg" priority />
                 <p className="mt-7 text-xs font-bold uppercase tracking-[0.16em] text-[#196b4d]">Tool-using support agent</p>
                 <h2 className="balance mt-3 text-4xl font-semibold tracking-[-0.05em] sm:text-5xl">Ask. Retrieve. Resolve.</h2>
                 <p className="pretty mx-auto mt-4 max-w-lg text-sm leading-6 text-[#66756f]">Ziggo can search approved company knowledge, explain its work, remember conversations, and ask before creating a human handoff.</p>
@@ -245,7 +244,7 @@ export function ChatWorkspace({
               <div className="space-y-7 pb-6">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {message.role === "assistant" && <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg bg-[#10251d] text-[#dbf97e]"><Bot className="size-4" /></span>}
+                    {message.role === "assistant" && <Image src="/ziggo-mark.png" alt="Ziggo" width={32} height={32} className="mt-1 size-8 shrink-0 rounded-lg" />}
                     <div className={`max-w-[82%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[72%] ${message.role === "user" ? "rounded-tr-md bg-[#196b4d] text-white" : "rounded-tl-md border border-black/6 bg-white text-[#253a32]"}`}>
                       {message.content || <span className="flex h-6 items-center gap-1.5" aria-label="Agent is working">{[0, 1, 2].map((dot) => <span key={dot} className="size-1.5 rounded-full bg-[#196b4d]" style={{ animation: `pulse-soft 1s ${dot * 150}ms infinite` }} />)}</span>}
                     </div>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { OrganizationList, UserButton } from "@clerk/nextjs";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { isClerkConfigured } from "@/lib/auth-config";
 
 export const metadata: Metadata = { title: "Choose a workspace" };
@@ -36,7 +36,7 @@ export default function SelectOrganizationPage() {
       <section className="relative z-10 mx-auto grid min-h-[calc(100vh-100px)] max-w-6xl items-center gap-12 py-14 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <Link href="/" className="mb-9 inline-flex items-center gap-2 text-sm font-semibold text-[#527064] transition hover:text-[#196b4d]"><ArrowLeft className="size-4" /> Back home</Link>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#d8efe1] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#196b4d]"><Sparkles className="size-3.5" /> Your support workspace</div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#d8efe1] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#196b4d]"><Image src="/ziggo-mark.png" alt="" width={14} height={14} className="size-3.5 rounded" /> Your support workspace</div>
           <h1 className="balance max-w-xl text-5xl font-semibold leading-[0.95] tracking-[-0.06em] sm:text-6xl">Where are we helping customers today?</h1>
           <p className="pretty mt-6 max-w-lg text-base leading-7 text-[#66756f]">Choose an existing organization or create a new one. Ziggo will tailor the support conversation to the workspace you select.</p>
         </div>
