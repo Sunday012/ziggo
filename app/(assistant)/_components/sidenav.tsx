@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useOrganization, useOrganizationList, UserButton } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { ChevronRight, MessageCircleMore, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountMenu } from "@/components/auth/account-menu";
 
 export function SideNav() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export function SideNav() {
           <Image src="/ziggo-mark.png" alt="" width={36} height={36} className="size-9 rounded-xl" priority />
           <span className="text-xl font-bold tracking-[-0.04em]">ziggo</span>
         </Link>
-        <UserButton />
+        <AccountMenu theme="dark" />
       </div>
 
       <div className="mt-10 flex items-center justify-between px-2">

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/components/auth/account-menu";
 import { isClerkConfigured } from "@/lib/auth-config";
 
 export function Header() {
@@ -29,19 +30,11 @@ export function Header() {
             </Button>
           ) : (<>
           <Show when="signed-out">
-            <SignInButton mode="modal">
-              <button className="hidden px-3 py-2 text-sm font-semibold text-white/80 transition hover:text-white sm:block">
-                Sign in
-              </button>
-            </SignInButton>
-            <SignInButton mode="modal" forceRedirectUrl="/select-org">
-              <Button className="h-10 rounded-full bg-white px-4 text-[#10251d] hover:bg-[#dbf97e] sm:px-5">
-                Get started <ArrowUpRight className="ml-1.5 size-4" />
-              </Button>
-            </SignInButton>
+            <Link href="/sign-in" className="hidden px-3 py-2 text-sm font-semibold text-white/80 transition hover:text-white sm:block">Sign in</Link>
+            <Button asChild className="h-10 rounded-full bg-white px-4 text-[#10251d] hover:bg-[#dbf97e] sm:px-5"><Link href="/sign-up">Get started <ArrowUpRight className="ml-1.5 size-4" /></Link></Button>
           </Show>
           <Show when="signed-in">
-            <UserButton />
+            <AccountMenu theme="dark" />
             <Button asChild className="h-10 rounded-full bg-white px-4 text-[#10251d] hover:bg-[#dbf97e] sm:px-5">
               <Link href="/select-org">Open workspace <ArrowUpRight className="ml-1.5 size-4" /></Link>
             </Button>

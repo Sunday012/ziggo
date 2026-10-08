@@ -8,7 +8,7 @@ import {
   MessageCircleMore,
   Zap,
 } from "lucide-react";
-import { Show, SignInButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import { isClerkConfigured } from "@/lib/auth-config";
 
 const features = [
@@ -44,11 +44,7 @@ function PrimaryCta() {
   return (
     <>
       <Show when="signed-out">
-        <SignInButton mode="modal" forceRedirectUrl="/select-org">
-          <button className="inline-flex h-14 items-center rounded-full bg-[#dbf97e] px-7 text-sm font-bold text-[#10251d] shadow-[0_12px_35px_rgba(219,249,126,0.18)] transition hover:-translate-y-0.5 hover:bg-white">
-            Build your support agent <ArrowUpRight className="ml-2 size-4" />
-          </button>
-        </SignInButton>
+        <Link href="/sign-up" className="inline-flex h-14 items-center rounded-full bg-[#dbf97e] px-7 text-sm font-bold text-[#10251d] shadow-[0_12px_35px_rgba(219,249,126,0.18)] transition hover:-translate-y-0.5 hover:bg-white">Build your support agent <ArrowUpRight className="ml-2 size-4" /></Link>
       </Show>
       <Show when="signed-in">
         <Link href="/select-org" className="inline-flex h-14 items-center rounded-full bg-[#dbf97e] px-7 text-sm font-bold text-[#10251d] shadow-[0_12px_35px_rgba(219,249,126,0.18)] transition hover:-translate-y-0.5 hover:bg-white">

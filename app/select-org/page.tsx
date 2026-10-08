@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { OrganizationList, UserButton } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 import { isClerkConfigured } from "@/lib/auth-config";
+import { AccountMenu } from "@/components/auth/account-menu";
+import { WorkspacePicker } from "./workspace-picker";
 
 export const metadata: Metadata = { title: "Choose a workspace" };
 
@@ -30,7 +31,7 @@ export default function SelectOrganizationPage() {
           <Image src="/ziggo-mark.png" alt="" width={36} height={36} className="size-9 rounded-xl" priority />
           <span className="text-xl font-bold tracking-[-0.04em]">ziggo</span>
         </Link>
-        <UserButton />
+        <AccountMenu />
       </header>
 
       <section className="relative z-10 mx-auto grid min-h-[calc(100vh-100px)] max-w-6xl items-center gap-12 py-14 lg:grid-cols-[0.85fr_1.15fr]">
@@ -41,26 +42,7 @@ export default function SelectOrganizationPage() {
           <p className="pretty mt-6 max-w-lg text-base leading-7 text-[#66756f]">Choose an existing organization or create a new one. Ziggo will tailor the support conversation to the workspace you select.</p>
         </div>
 
-        <div className="flex justify-center lg:justify-end">
-          <div className="rounded-[2rem] border border-black/8 bg-white/65 p-3 shadow-[0_28px_80px_rgba(16,37,29,0.12)] backdrop-blur-xl sm:p-5">
-            <OrganizationList
-              hidePersonal
-              afterSelectOrganizationUrl="/assistant"
-              afterCreateOrganizationUrl="/assistant"
-              appearance={{
-                elements: {
-                  rootBox: "w-full",
-                  cardBox: "shadow-none",
-                  card: "shadow-none bg-transparent border-0",
-                  organizationListPreviewButton: "rounded-xl border border-black/8 hover:bg-[#edf7f0]",
-                  organizationPreviewTextContainer: "text-left",
-                  formButtonPrimary: "bg-[#10251d] hover:bg-[#196b4d]",
-                  footer: "hidden",
-                },
-              }}
-            />
-          </div>
-        </div>
+        <div className="flex justify-center lg:justify-end"><WorkspacePicker /></div>
       </section>
     </main>
   );

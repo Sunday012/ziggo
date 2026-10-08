@@ -40,6 +40,10 @@ export default function RootLayout({
 }>) {
   const content = isClerkConfigured() ? (
     <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/select-org"
+      signUpFallbackRedirectUrl="/select-org"
       appearance={{
         variables: {
           colorPrimary: "#196b4d",
@@ -53,7 +57,7 @@ export default function RootLayout({
   ) : children;
 
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>{content}</body>
     </html>
   );

@@ -20,7 +20,7 @@ Ziggo is an agentic customer-support workspace. Each Clerk organization gets an 
 4. In Pinecone, create an integrated-embedding index whose source text field is named `text`, then set its name in `PINECONE_INDEX_NAME`.
 5. Start the application with `npm run dev`.
 
-The Clerk application must have Organizations enabled. The Pinecone index must support `upsertRecords` and `searchRecords`; Ziggo uses a separate namespace for every Clerk organization. Add the same environment variables to Vercel before deploying.
+The Clerk application must have Organizations enabled. In Clerk's **User & authentication** settings, enable email-address sign-up, email verification codes, email sign-in, and passwords. Ziggo renders its own sign-in, sign-up, verification, recovery, account, and workspace interfaces; Clerk remains the underlying session and membership service. The Pinecone index must support `upsertRecords` and `searchRecords`; Ziggo uses a separate namespace for every Clerk organization. Add the same environment variables to Vercel before deploying.
 
 ## Knowledge sources
 

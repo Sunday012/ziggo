@@ -8,7 +8,7 @@ const authenticatedProxy = clerkMiddleware(async (auth, request) => {
   if (protectedPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix))) {
     await auth.protect();
   }
-});
+}, { signInUrl: "/sign-in", signUpUrl: "/sign-up" });
 
 export default isClerkConfigured()
   ? authenticatedProxy
