@@ -17,6 +17,8 @@ export type KnowledgeDocumentRow = {
   error_message: string | null;
   created_at: string;
   indexed_at: string | null;
+  external_id?: string | null;
+  checksum?: string | null;
 };
 
 let database: Database | null | undefined;
@@ -185,6 +187,16 @@ export async function listKnowledgeDocuments(orgId: string) {
   return rows as KnowledgeDocumentRow[];
 }
 
+export async function listKnowledgeCandidates(orgId: string) {
+  const sql = getAgentDatabase();
+  if (!sql) return [];
+  return await sql`
+    select id, conversation_id, source_type, title, content, status, created_at
+    from ziggo_knowledge_candidates where organization_id = ${orgId} and status = 'pending'
+    order by created_at desc limit 30
+  ` as Array<{ id: string; conversation_id: string | null; source_type: "conversation" | "whatsapp"; title: string; content: string; status: "pending"; created_at: string }>;
+}
+
 export async function findKnowledgeDocumentByChecksum(orgId: string, checksum: string) {
   const sql = getAgentDatabase();
   if (!sql) return null;
@@ -207,13 +219,14 @@ export async function createKnowledgeDocument(input: {
   mimeType?: string;
   byteSize?: number;
   checksum: string;
+  externalId?: string;
 }) {
   const sql = getAgentDatabase();
   if (!sql) throw new Error("Neon is required for the knowledge library.");
   const rows = await sql`
     insert into ziggo_knowledge_documents (
       id, organization_id, title, source_name, source_type, mime_type,
-      byte_size, checksum, status, chunk_count
+      byte_size, checksum, external_id, status, chunk_count
     ) values (
       ${input.id}::uuid,
       ${input.orgId},
@@ -223,6 +236,7 @@ export async function createKnowledgeDocument(input: {
       ${input.mimeType ?? null},
       ${input.byteSize ?? null},
       ${input.checksum},
+      ${input.externalId ?? null},
       'processing',
       0
     )
@@ -230,6 +244,19 @@ export async function createKnowledgeDocument(input: {
       status, chunk_count, error_message, created_at, indexed_at
   `;
   return rows[0] as KnowledgeDocumentRow;
+}
+
+export async function findKnowledgeDocumentByExternalId(orgId: string, sourceType: string, externalId: string) {
+  const sql = getAgentDatabase();
+  if (!sql) return null;
+  const rows = await sql`
+    select id, title, source_name, source_type, mime_type, byte_size,
+      status, chunk_count, error_message, created_at, indexed_at, external_id, checksum
+    from ziggo_knowledge_documents
+    where organization_id = ${orgId} and source_type = ${sourceType} and external_id = ${externalId}
+    limit 1
+  ` as KnowledgeDocumentRow[];
+  return rows[0] ?? null;
 }
 
 export async function markKnowledgeDocumentReady(input: { id: string; orgId: string; chunkCount: number }) {

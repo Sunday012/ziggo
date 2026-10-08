@@ -16,7 +16,7 @@ Ziggo is an agentic customer-support workspace. Each Clerk organization gets an 
 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` to `.env.local` and add the server-side credentials.
-3. Create a Neon project, copy its pooled connection string into `DATABASE_URL`, then run `database/migrations/001_create_agent_runtime.sql` and `database/migrations/002_add_knowledge_sources.sql` in order in Neon's SQL Editor.
+3. Create a Neon project, copy its pooled connection string into `DATABASE_URL`, then run every file in `database/migrations` in numerical order in Neon's SQL Editor.
 4. In Pinecone, create an integrated-embedding index whose source text field is named `text`, then set its name in `PINECONE_INDEX_NAME`.
 5. Start the application with `npm run dev`.
 
@@ -26,7 +26,11 @@ The Clerk application must have Organizations enabled. In Clerk's **User & authe
 
 Workspace members can paste reviewed text or upload PDF, DOCX, TXT, Markdown, CSV, and JSON documents from the Knowledge panel. Uploads are limited to 4 MB and 400,000 extracted characters. Ziggo records the source and indexing state in Neon, deduplicates matching content, batches embeddings into Pinecone, and removes both the metadata and vectors when a source is deleted.
 
-Migration `002_add_knowledge_sources.sql` also creates the connector and review-queue foundation for Google Drive synchronization and conversation-derived knowledge. Provider credentials must be encrypted before they are written to `encrypted_credentials`; the application does not store connector credentials yet.
+Google Drive can be connected from the Knowledge panel. Create a Google Cloud OAuth web application, enable the Drive API, and add `<NEXT_PUBLIC_APP_URL>/api/integrations/google-drive/callback` as an authorized redirect URI. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and a base64 32-byte `INTEGRATION_ENCRYPTION_KEY`. Ziggo requests read-only Drive access, encrypts refresh tokens with AES-256-GCM, and indexes supported new or changed files when a teammate clicks sync.
+
+WhatsApp uses Meta's Cloud API for verified inbound capture. Configure the panel with a permanent system-user token and phone number ID, then subscribe the Meta app to `messages` at `<NEXT_PUBLIC_APP_URL>/api/webhooks/whatsapp`. Set the webhook verification value to `WHATSAPP_VERIFY_TOKEN` and add the Meta app secret as `WHATSAPP_APP_SECRET`. Inbound text becomes an organization-owned conversation; Ziggo does not send automatic customer replies or learn from it until a teammate approves the conversation in the review queue.
+
+All connector credentials are encrypted before Neon storage. Generate the encryption key with `openssl rand -base64 32`, store it as a Vercel secret, and keep it stable—changing it makes existing connections unreadable.
 
 ## How the agent works
 

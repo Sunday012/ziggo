@@ -23,6 +23,7 @@ export async function ingestKnowledge(input: {
   content: string;
   mimeType?: string;
   byteSize?: number;
+  externalId?: string;
 }) {
   const checksum = checksumKnowledge(input.content);
   const duplicate = await findKnowledgeDocumentByChecksum(input.orgId, checksum);
@@ -40,6 +41,7 @@ export async function ingestKnowledge(input: {
     mimeType: input.mimeType,
     byteSize: input.byteSize,
     checksum,
+    externalId: input.externalId,
   });
 
   try {
