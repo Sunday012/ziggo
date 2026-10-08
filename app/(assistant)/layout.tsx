@@ -1,13 +1,10 @@
-import React from 'react'
-import { SideNav } from './_components/sidenav'
+import { SideNav } from "./_components/sidenav";
 
-export default function AssistantLayout(
-    {children} : {children: React.ReactNode}
-) {
+export default function AssistantLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className='flex w-full'>
-      <SideNav />
-        {children}
-    </div>
-  )
+    <main className="flex h-dvh min-h-[640px] overflow-hidden bg-[#f6f3ec]">
+      <div className="hidden h-full lg:block"><SideNav /></div>
+      {children}
+    </main>
+  );
 }
