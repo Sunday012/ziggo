@@ -48,7 +48,7 @@ export function SideNav() {
               className={`group flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition ${isActive ? "bg-white/10" : "hover:bg-white/5"}`}
             >
               <Avatar className="size-10 rounded-xl">
-                <AvatarImage src={item.imageUrl} alt="" />
+                <AvatarImage src={item.hasImage ? item.imageUrl : undefined} alt={item.hasImage ? `${item.name} logo` : ""} />
                 <AvatarFallback className="rounded-xl bg-[#b9f4d4] text-xs font-black text-[#10251d]">{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="min-w-0 flex-1">

@@ -3,8 +3,18 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
-import { ArrowLeft, ArrowRight, Building2, Check, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Camera, Check, Plus, Upload } from "lucide-react";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const MAX_LOGO_BYTES = 10 * 1024 * 1024;
+const LOGO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function validateLogo(file: File) {
+  if (!LOGO_TYPES.has(file.type)) return "Choose a PNG, JPEG, or WebP image.";
+  if (file.size > MAX_LOGO_BYTES) return "The logo must be smaller than 10 MB.";
+  return null;
+}
 
 export function WorkspacePicker() {
   const router = useRouter();
@@ -16,6 +26,35 @@ export function WorkspacePicker() {
   const [name, setName] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoBusyId, setLogoBusyId] = useState<string | null>(null);
+  const [logoOverrides, setLogoOverrides] = useState<Record<string, string>>({});
+
+  function selectNewLogo(file?: File) {
+    if (!file) return;
+    const validationError = validateLogo(file);
+    if (validationError) { setError(validationError); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setLogo(file); setLogoPreview(typeof reader.result === "string" ? reader.result : null); setError(null); };
+    reader.readAsDataURL(file);
+  }
+
+  async function updateWorkspaceLogo(organization: NonNullable<typeof activeOrganization>, file?: File) {
+    if (!file) return;
+    const validationError = validateLogo(file);
+    if (validationError) { setError(validationError); return; }
+    setLogoBusyId(organization.id);
+    setError(null);
+    try {
+      const updated = await organization.setLogo({ file });
+      setLogoOverrides((current) => ({ ...current, [organization.id]: updated.imageUrl }));
+    } catch (error) {
+      setError(getAuthErrorMessage(error, "That logo could not be uploaded. Please try another image."));
+    } finally {
+      setLogoBusyId(null);
+    }
+  }
 
   async function openWorkspace(organizationId: string) {
     if (!setActive) return;
@@ -38,6 +77,20 @@ export function WorkspacePicker() {
     setError(null);
     try {
       const organization = await createOrganization({ name: name.trim() });
+      if (logo) {
+        try {
+          await organization.setLogo({ file: logo });
+        } catch (error) {
+          await setActive({ organization: organization.id });
+          setCreating(false);
+          setName("");
+          setLogo(null);
+          setLogoPreview(null);
+          setError(getAuthErrorMessage(error, "The workspace was created, but its logo could not be uploaded. Use the camera button to try again."));
+          setBusyId(null);
+          return;
+        }
+      }
       await setActive({ organization: organization.id });
       router.push("/assistant");
       router.refresh();
@@ -54,11 +107,18 @@ export function WorkspacePicker() {
   if (creating) {
     return (
       <div className="w-full max-w-xl rounded-[2rem] border border-black/8 bg-white/75 p-6 shadow-[0_28px_80px_rgba(16,37,29,0.12)] backdrop-blur-xl sm:p-8">
-        <button type="button" onClick={() => { setCreating(false); setError(null); }} className="inline-flex items-center gap-2 text-xs font-bold text-[#66756f] transition hover:text-[#10251d]"><ArrowLeft className="size-3.5" /> All workspaces</button>
+        <button type="button" onClick={() => { setCreating(false); setLogo(null); setLogoPreview(null); setError(null); }} className="inline-flex items-center gap-2 text-xs font-bold text-[#66756f] transition hover:text-[#10251d]"><ArrowLeft className="size-3.5" /> All workspaces</button>
         <div className="mt-7 grid size-12 place-items-center rounded-2xl bg-[#dff6e8] text-[#196b4d]"><Building2 className="size-5" /></div>
         <h2 className="mt-5 text-3xl font-semibold tracking-[-0.045em]">Create a workspace</h2>
         <p className="mt-2 text-sm leading-6 text-[#66756f]">Use your company or team name. You can invite teammates after setup.</p>
         <form onSubmit={createWorkspace} className="mt-7">
+          <div className="mb-5 flex items-center gap-4 rounded-2xl border border-black/7 bg-[#f7faf8] p-3">
+            <Avatar className="size-16 rounded-2xl border border-black/8 bg-white">
+              <AvatarImage src={logoPreview ?? undefined} alt={logoPreview ? "Workspace logo preview" : ""} className="object-cover" />
+              <AvatarFallback className="rounded-2xl bg-[#10251d] text-sm font-black text-[#dbf97e]">{name.trim().slice(0, 2).toUpperCase() || "WS"}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1"><p className="text-xs font-bold">Workspace logo <span className="font-normal text-[#8a9691]">(optional)</span></p><p className="mt-1 text-[10px] leading-4 text-[#75837d]">PNG, JPEG, or WebP · up to 10 MB</p><label htmlFor="workspace-logo" className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#196b4d]/20 bg-white px-3 py-2 text-[10px] font-bold text-[#196b4d] transition hover:bg-[#edf7f0]"><Upload className="size-3" /> {logo ? "Change logo" : "Choose logo"}</label><input id="workspace-logo" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => selectNewLogo(event.target.files?.[0])} className="sr-only" /></div>
+          </div>
           <label htmlFor="workspace-name" className="text-xs font-bold">Workspace name</label>
           <input id="workspace-name" value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={64} autoFocus className="mt-2 h-12 w-full rounded-xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-[#196b4d]/55 focus:ring-4 focus:ring-[#196b4d]/8" placeholder="Acme Support" required />
           {error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-700">{error}</p>}
@@ -75,7 +135,8 @@ export function WorkspacePicker() {
       <div className="mt-6 space-y-2">
         {memberships.map(({ organization }) => {
           const isActive = activeOrganization?.id === organization.id;
-          return <button key={organization.id} type="button" onClick={() => void openWorkspace(organization.id)} disabled={Boolean(busyId)} className="group flex w-full items-center gap-3 rounded-2xl border border-black/7 bg-white p-3 text-left transition hover:border-[#196b4d]/25 hover:bg-[#f5fbf7] disabled:opacity-50"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#10251d] text-xs font-black text-[#dbf97e]">{organization.name.slice(0, 2).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{organization.name}</span><span className="mt-1 flex items-center gap-1.5 text-[10px] text-[#75837d]">{isActive ? <><Check className="size-3 text-[#196b4d]" /> Currently active</> : "Support workspace"}</span></span><ArrowRight className="size-4 text-[#a4ada9] transition group-hover:translate-x-0.5 group-hover:text-[#196b4d]" /></button>;
+          const logoUrl = logoOverrides[organization.id] ?? (organization.hasImage ? organization.imageUrl : undefined);
+          return <div key={organization.id} className="group flex items-center gap-2 rounded-2xl border border-black/7 bg-white p-2 transition hover:border-[#196b4d]/25 hover:bg-[#f5fbf7]"><button type="button" onClick={() => void openWorkspace(organization.id)} disabled={Boolean(busyId) || logoBusyId === organization.id} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left disabled:opacity-50"><Avatar className="size-11 shrink-0 rounded-xl"><AvatarImage src={logoUrl} alt={logoUrl ? `${organization.name} logo` : ""} className="object-cover" /><AvatarFallback className="rounded-xl bg-[#10251d] text-xs font-black text-[#dbf97e]">{organization.name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{organization.name}</span><span className="mt-1 flex items-center gap-1.5 text-[10px] text-[#75837d]">{isActive ? <><Check className="size-3 text-[#196b4d]" /> Currently active</> : "Support workspace"}</span></span><ArrowRight className="size-4 text-[#a4ada9] transition group-hover:translate-x-0.5 group-hover:text-[#196b4d]" /></button><label title={`Change ${organization.name} logo`} className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-[#75837d] transition hover:bg-white hover:text-[#196b4d]"><Camera className={`size-4 ${logoBusyId === organization.id ? "animate-pulse" : ""}`} /><span className="sr-only">Change {organization.name} logo</span><input type="file" accept="image/png,image/jpeg,image/webp" disabled={logoBusyId === organization.id} onChange={(event) => { void updateWorkspaceLogo(organization, event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" /></label></div>;
         })}
         {memberships.length === 0 && <div className="rounded-2xl border border-dashed border-black/12 bg-white/50 px-6 py-8 text-center"><Building2 className="mx-auto size-6 text-[#8a9691]" /><p className="mt-3 text-sm font-bold">Your first workspace starts here</p><p className="mt-2 text-xs leading-5 text-[#75837d]">Create a home for your support agent, knowledge, and team.</p></div>}
       </div>
@@ -85,4 +146,3 @@ export function WorkspacePicker() {
     </div>
   );
 }
-

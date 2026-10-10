@@ -87,7 +87,7 @@ export function ChatWorkspace({
 }) {
   const { organization, isLoaded } = useOrganization();
   const organizationName = organization?.name ?? "your team";
-  const organizationLogo = organization?.imageUrl;
+  const organizationLogo = organization?.hasImage ? organization.imageUrl : undefined;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>(initialConversations);
